@@ -18,6 +18,7 @@ The offer is intentionally audit-first:
 Start here:
 
 - [Answerproof landing page](https://jerednel.github.io/answerproof/)
+- [Request the $1,500 diagnostic](https://jerednel.github.io/answerproof/diagnostic/)
 - [Sample AI search teardown](https://jerednel.github.io/answerproof/sample/)
 - [Answerproof public repo](https://github.com/jerednel/answerproof)
 
