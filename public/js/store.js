@@ -20,6 +20,11 @@ const uid = (p = "id") =>
 
 const now = () => new Date().toISOString();
 
+/* Manual sort key (ascending = top). Tasks only carry an explicit `order` once
+   they've been dragged; otherwise it falls back to -createdAt so the default is
+   newest-first and every device computes the same baseline without a backfill. */
+const orderKey = (t) => (t && t.order != null ? t.order : -(Date.parse(t && t.createdAt) || 0));
+
 const blank = () => ({ tasks: [], projects: [], notes: [], meta: { created: now() } });
 
 /* ---- seed: a believable starting board so the app feels alive ---- */
@@ -192,6 +197,35 @@ class Store {
     const tsk = this.task(id); if (!tsk) return;
     this.updateTask(id, { status: tsk.status === "done" ? "next" : "done" });
   }
+  /* Move one task between its new visual neighbors. In the normal case this
+     changes ONLY the moved task (to the midpoint of its neighbors' keys), so a
+     reorder inside a filtered/overlapping view never disturbs tasks hidden from
+     that view. The neighbors only collide (bk >= ak) when the visible list isn't
+     yet strictly keyed — i.e. the seed, where every task shares one createdAt —
+     and only then do we renumber the whole visible list once to make keys distinct.
+     `orderedIds` is the full visible order, used solely for that fallback. */
+  moveTask(id, beforeId, afterId, orderedIds) {
+    const t = this.task(id); if (!t) return;
+    const bk = beforeId ? orderKey(this.task(beforeId)) : null;
+    const ak = afterId ? orderKey(this.task(afterId)) : null;
+    if (bk != null && ak != null && bk >= ak) return this._renumber(orderedIds);
+    let order;
+    if (bk == null && ak == null) return;
+    else if (bk == null) order = ak - 1;        // dropped at top
+    else if (ak == null) order = bk + 1;        // dropped at bottom
+    else order = (bk + ak) / 2;                 // between two distinct neighbors
+    if (order !== orderKey(t)) this.updateTask(id, { order });
+  }
+  _renumber(orderedIds) {
+    const tasks = (orderedIds || []).map((id) => this.task(id)).filter(Boolean);
+    if (tasks.length < 2) return;
+    const keys = tasks.map(orderKey);
+    const base = Math.min(...keys), span = Math.max(...keys) - base;
+    const step = span >= tasks.length - 1 ? span / (tasks.length - 1) : 1;
+    let changed = false;
+    tasks.forEach((t, i) => { const o = base + i * step; if (t.order !== o) { t.order = o; changed = true; } });
+    if (changed) this._emit();
+  }
   deleteTask(id) {
     const tsk = this.task(id); if (!tsk) return;
     // notes that lived only in this task's context become orphaned standalone notes
@@ -295,4 +329,4 @@ class Store {
 }
 
 export const store = new Store();
-export { uid };
+export { uid, orderKey };

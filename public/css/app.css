@@ -199,6 +199,26 @@
 .icon-btn:hover { color: var(--cyan); border-color: var(--line); background: var(--bg-3); }
 .icon-btn.danger:hover { color: var(--red); }
 
+/* ─────────────── DRAG HANDLE / REORDER ─────────────── */
+.drag-handle {
+  flex-shrink: 0; align-self: stretch; width: 18px; margin: -12px 6px -12px -8px;
+  display: grid; place-items: center; background: none; border: none;
+  color: var(--ink-faint); font-size: 13px; line-height: 1; letter-spacing: -2px;
+  cursor: grab; touch-action: none; opacity: 0; transition: opacity .15s, color .15s;
+}
+.task:hover .drag-handle { opacity: .45; }
+.drag-handle:hover { color: var(--cyan); opacity: 1; }
+.drag-handle:active { cursor: grabbing; }
+.task.is-dragging {
+  background: var(--bg-3); opacity: .95; position: relative; z-index: 5;
+  border-color: var(--cyan); box-shadow: 0 10px 26px -10px rgba(0,0,0,.7), var(--glow-cyan);
+}
+.task.is-dragging .drag-handle { opacity: 1; color: var(--cyan); cursor: grabbing; }
+/* touch / no-hover: keep the grip visible and a bigger target */
+@media (hover: none), (pointer: coarse) {
+  .drag-handle { opacity: .5; width: 26px; font-size: 15px; }
+}
+
 /* ─────────────── CHIPS / TAGS ─────────────── */
 .chip {
   font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em;

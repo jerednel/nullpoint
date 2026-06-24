@@ -56,6 +56,7 @@ export async function migrate() {
     created_at text not null,
     updated_at text not null,
     completed_at text,
+    sort_order double precision,
     rev int not null default 1,
     seq bigint not null,
     deleted_at text
@@ -83,6 +84,9 @@ export async function migrate() {
   await sql`create index if not exists ix_notes_project on notes (project_id) where deleted_at is null`;
   await sql`create index if not exists ix_projects_live on projects (id) where deleted_at is null`;
   await sql`create index if not exists ix_tasks_live on tasks (id) where deleted_at is null`;
+
+  // evolve existing DBs (plain CREATE above is a no-op once the table exists)
+  await sql`alter table tasks add column if not exists sort_order double precision`;
 }
 
 /* ---------------- client <-> row mapping (explicit, per entity) ---------------- */
@@ -110,6 +114,7 @@ function rowToTask(r: any) {
     contexts: jarr(r.contexts), noteIds: jarr(r.note_ids),
     due: r.due ?? null, waitingFor: r.waiting_for ?? "", flagged: !!r.flagged,
     createdAt: r.created_at, updatedAt: r.updated_at, completedAt: r.completed_at ?? null,
+    order: r.sort_order ?? null,
     rev: r.rev, deletedAt: r.deleted_at ?? null,
   };
 }
@@ -147,15 +152,15 @@ export async function applyOps(ops: any[]): Promise<{ acked: string[]; seq: stri
           where excluded.rev > projects.rev
              or (excluded.rev = projects.rev and excluded.updated_at > projects.updated_at)`;
       } else if (op.entity === "tasks") {
-        await tx`insert into tasks (id,title,status,project_id,contexts,due,waiting_for,flagged,created_at,updated_at,completed_at,rev,seq,deleted_at)
+        await tx`insert into tasks (id,title,status,project_id,contexts,due,waiting_for,flagged,created_at,updated_at,completed_at,sort_order,rev,seq,deleted_at)
           values (${d.id}, ${str(d.title, "Untitled")}, ${str(d.status, "inbox")}, ${orNull(d.projectId)},
                   ${JSON.stringify(d.contexts ?? [])}::jsonb, ${orNull(d.due)}, ${str(d.waitingFor)}, ${!!d.flagged},
-                  ${createdAt}, ${updatedAt}, ${orNull(d.completedAt)}, ${rev}, nextval('np_seq'), ${deletedAt})
+                  ${createdAt}, ${updatedAt}, ${orNull(d.completedAt)}, ${d.order ?? null}, ${rev}, nextval('np_seq'), ${deletedAt})
           on conflict (id) do update set
             title=excluded.title, status=excluded.status, project_id=excluded.project_id,
             contexts=excluded.contexts, due=excluded.due, waiting_for=excluded.waiting_for,
             flagged=excluded.flagged, updated_at=excluded.updated_at, completed_at=excluded.completed_at,
-            rev=excluded.rev, seq=excluded.seq, deleted_at=excluded.deleted_at
+            sort_order=excluded.sort_order, rev=excluded.rev, seq=excluded.seq, deleted_at=excluded.deleted_at
           where excluded.rev > tasks.rev
              or (excluded.rev = tasks.rev and excluded.updated_at > tasks.updated_at)`;
       } else if (op.entity === "notes") {

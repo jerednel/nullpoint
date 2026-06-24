@@ -56,6 +56,10 @@ re-pulls everything.
 ## Schema (text LWW clock, derived edges)
 - `updated_at TEXT`, `rev INT`, `seq BIGINT`, `deleted_at TEXT NULL`, `created_at TEXT`.
 - `due/completed_at` nullable, NO default. `waiting_for TEXT NOT NULL DEFAULT ''`.
+- `sort_order DOUBLE PRECISION` nullable — manual drag order. Null falls back to
+  -createdAt client-side, so it's only set once a task is dragged (no backfill). A
+  drop changes only the moved task (midpoint of its neighbors), so reordering a
+  filtered/overlapping list never disturbs hidden tasks.
 - `contexts/tags` jsonb. **noteIds are NOT stored** — derived on read via jsonb_agg from
   notes.task_id / notes.project_id (the back-refs are the single source of truth, so the
   redundant arrays self-heal instead of drifting).

@@ -2,13 +2,27 @@
    NULLPOINT // VIEWS
    Each export renders into the #view container.
    ============================================================ */
-import { store } from "./store.js";
+import { store, orderKey } from "./store.js";
 import { el, clear, fmtDate, isOverdue, toast, escapeHtml } from "./dom.js";
 import { openTask, openNote, openProject } from "./drawer.js";
+import { sortableList } from "./sortable.js";
+
+const byOrder = (a, b) => orderKey(a) - orderKey(b);
+/* attach drag-reorder to a freshly-built panel's body */
+function reorderable(panelEl) {
+  const body = panelEl.querySelector(".panel__body");
+  if (body) sortableList(body, (id, before, after) => {
+    const ids = [...body.children].filter((c) => c.classList?.contains("task")).map((c) => c.dataset.id);
+    store.moveTask(id, before, after, ids);
+  });
+  return panelEl;
+}
 
 /* ---------- shared task row ---------- */
-function taskRow(task, { showProject = true, clarify = false } = {}) {
-  const node = el("div.task" + (task.status === "done" ? ".is-done" : ""));
+function taskRow(task, { showProject = true, clarify = false, drag = false } = {}) {
+  const node = el("div.task" + (task.status === "done" ? ".is-done" : ""), { dataset: { id: task.id } });
+
+  const handle = drag ? el("button.drag-handle", { type: "button", html: "⠿", title: "Drag to reorder", "aria-label": "Drag to reorder" }) : null;
 
   const check = el("button.task__check", { html: "✓", "aria-label": "Toggle done", onClick: () => { store.toggleTask(task.id); toast(task.status === "done" ? "Reopened" : "Done ✓"); } });
 
@@ -46,6 +60,7 @@ function taskRow(task, { showProject = true, clarify = false } = {}) {
     el("button.icon-btn.danger", { html: "✕", title: "Delete", onClick: () => { store.deleteTask(task.id); toast("Deleted"); } }),
   ]);
 
+  if (handle) node.append(handle);
   node.append(check, main, actions);
   return node;
 }
@@ -89,14 +104,15 @@ export function dashboard(mount) {
     statCard(c.doneToday, "Done today", "var(--amber)"),
   ]);
 
-  const flagged = store.tasks.filter((t) => t.flagged && t.status !== "done");
+  const flagged = store.tasks.filter((t) => t.flagged && t.status !== "done").sort(byOrder);
   const dueSoon = store.tasks
     .filter((t) => t.due && t.status !== "done")
     .sort((a, b) => a.due.localeCompare(b.due));
+  const blocked = store.tasks.filter((t) => t.status === "waiting").sort(byOrder);
 
   const cols = el("div.grid.grid--2", {}, [
-    panel("⚑ Flagged / focus", flagged.length, "var(--amber)",
-      flagged.length ? flagged.map((t) => taskRow(t)) : [empty("◇", "Nothing flagged", "Flag a task to spotlight it here")]),
+    reorderable(panel("⚑ Flagged / focus", flagged.length, "var(--amber)",
+      flagged.length ? flagged.map((t) => taskRow(t, { drag: true })) : [empty("◇", "Nothing flagged", "Flag a task to spotlight it here")])),
     panel("▣ Scheduled", dueSoon.length, "var(--cyan)",
       dueSoon.length ? dueSoon.map((t) => taskRow(t)) : [empty("▤", "No dates set", "Add a due date from any task")]),
   ]);
@@ -108,6 +124,11 @@ export function dashboard(mount) {
       panel("⬇ Process your inbox", c.inbox, "var(--magenta)", store.tasks.filter((t) => t.status === "inbox").slice(0, 4).map((t) => taskRow(t, { clarify: true })))
     ]) : "",
     cols,
+    el("div", { style: "margin-top:22px" }, [
+      reorderable(panel("⧖ Waiting / blocked", blocked.length, "var(--violet)",
+        blocked.length ? blocked.map((t) => taskRow(t, { drag: true }))
+          : [empty("⧖", "Nothing blocked", "Tasks you mark as ‘waiting’ surface here so they don't fall through")])),
+    ]),
   );
 }
 function statCard(num, label, color) {
@@ -122,11 +143,11 @@ function greeting() {
 
 /* ===================== INBOX (CAPTURE) ===================== */
 export function inbox(mount) {
-  const items = store.tasks.filter((t) => t.status === "inbox");
+  const items = store.tasks.filter((t) => t.status === "inbox").sort(byOrder);
   mount.append(
     head("INBOX", "⬇", "Capture everything, decide nothing yet. <b>Clarify</b> each item into a next action, project, someday, or reference note. <span class='hint-kbd'>C</span> to capture from anywhere."),
     items.length
-      ? el("div.panel", {}, [el("div.panel__body", {}, items.map((t) => taskRow(t, { clarify: true })))])
+      ? reorderable(el("div.panel", {}, [el("div.panel__body", {}, items.map((t) => taskRow(t, { clarify: true, drag: true })))]))
       : empty("◇", "Inbox zero", "Your mind is clear. Capture the next open loop above."),
   );
 }
@@ -142,36 +163,35 @@ export function nextActions(mount) {
   contexts.forEach((c) => bar.append(filterChip(c, ctxFilter === c, () => { ctxFilter = ctxFilter === c ? null : c; rerender(mount, nextActions); }, "var(--lime)")));
 
   if (ctxFilter) items = items.filter((t) => t.contexts.includes(ctxFilter));
-  // flagged first, then by created
-  items.sort((a, b) => (b.flagged - a.flagged) || b.createdAt.localeCompare(a.createdAt));
+  items.sort(byOrder);   // manual order (drag to reorder)
 
   mount.append(
-    head("NEXT ACTIONS", "→", "The next physical, visible action for each open loop. Filter by context to match your situation."),
+    head("NEXT ACTIONS", "→", "The next physical, visible action for each open loop. Filter by context to match your situation. Drag <span class='hint-kbd'>⠿</span> to reorder."),
     contexts.length ? bar : "",
     items.length
-      ? el("div.panel.panel--accent", { style: "--accent:var(--cyan)" }, [el("div.panel__body", {}, items.map((t) => taskRow(t)))])
+      ? reorderable(el("div.panel.panel--accent", { style: "--accent:var(--cyan)" }, [el("div.panel__body", {}, items.map((t) => taskRow(t, { drag: true })))]))
       : empty("→", ctxFilter ? `Nothing in ${ctxFilter}` : "No next actions", "Promote something from your inbox, or capture a new action"),
   );
 }
 
 /* ===================== WAITING FOR ===================== */
 export function waiting(mount) {
-  const items = store.tasks.filter((t) => t.status === "waiting");
+  const items = store.tasks.filter((t) => t.status === "waiting").sort(byOrder);
   mount.append(
     head("WAITING FOR", "⧖", "Delegated or blocked. Track who or what you're waiting on so nothing falls through."),
     items.length
-      ? el("div.panel.panel--accent", { style: "--accent:var(--violet)" }, [el("div.panel__body", {}, items.map((t) => taskRow(t)))])
+      ? reorderable(el("div.panel.panel--accent", { style: "--accent:var(--violet)" }, [el("div.panel__body", {}, items.map((t) => taskRow(t, { drag: true })))]))
       : empty("⧖", "Not waiting on anyone", "Mark a task as 'waiting' when you've handed it off"),
   );
 }
 
 /* ===================== SOMEDAY / MAYBE ===================== */
 export function someday(mount) {
-  const items = store.tasks.filter((t) => t.status === "someday");
+  const items = store.tasks.filter((t) => t.status === "someday").sort(byOrder);
   mount.append(
     head("SOMEDAY / MAYBE", "✶", "Incubating ideas and not-now commitments. Review periodically and pull into action when the time is right."),
     items.length
-      ? el("div.panel", {}, [el("div.panel__body", {}, items.map((t) => taskRow(t)))])
+      ? reorderable(el("div.panel", {}, [el("div.panel__body", {}, items.map((t) => taskRow(t, { drag: true })))]))
       : empty("✶", "No someday items", "Park ideas here to revisit later without losing them"),
   );
 }

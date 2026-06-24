@@ -11,6 +11,7 @@
    Push and pull are mutually exclusive; a pull never runs while ops are queued.
    ============================================================ */
 import { store } from "./store.js";
+import { isDragging } from "./sortable.js";
 
 const API = "/api";
 const K = { token: "nullpoint.sync.token", queue: "nullpoint.sync.queue.v1", cursor: "nullpoint.sync.cursor", adopted: "nullpoint.sync.adopted" };
@@ -128,7 +129,7 @@ function toAuth() { setPhase("authwait"); authCb(); }
 
 /* ---------------- pull (mutex: never while ops queued / mid-push) ------------ */
 async function maybePull() {
-  if (booting || phase !== "idle" || queue.size || !token) return;
+  if (booting || isDragging() || phase !== "idle" || queue.size || !token) return;
   setPhase("pulling");
   let res;
   try { res = await api("/changes?since=" + encodeURIComponent(cursor)); }
@@ -142,6 +143,7 @@ async function maybePull() {
   if (queue.size) arm();
 }
 function typingOrDrawerOpen() {
+  if (isDragging()) return true;        // never rebuild #view mid-drag (would orphan the dragged row)
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
   const d = document.getElementById("drawer");
