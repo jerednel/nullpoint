@@ -277,6 +277,7 @@
 .stat__num { font-family: var(--font-display); font-weight: 700; font-size: 38px; line-height: 1; color: var(--ink); }
 .stat__num small { font-size: 16px; color: var(--ink-faint); }
 .stat__label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .12em; margin-top: 8px; }
+.stat__icon { display: none; }   /* desktop: cards stay number+label; icon is mobile-only */
 
 /* ─────────────── FILTER BAR ─────────────── */
 .filterbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 20px; }
@@ -419,8 +420,13 @@
   .view { padding: 14px 12px; }
   .view-title { font-size: 23px; }
   .view-head__actions { margin-left: 0; width: 100%; }
-  .stat__num { font-size: 30px; }
-  .stats { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+  /* compact icon+number status strip — reclaim the screen for tasks */
+  .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .stat { flex: 1 1 auto; min-width: 0; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .stat::after { display: none; }                 /* drop the corner glow */
+  .stat__icon { display: inline; color: var(--accent); font-size: 14px; line-height: 1; text-shadow: 0 0 8px var(--accent); }
+  .stat__num { font-size: 16px; }
+  .stat__label { display: none; }                 /* icon + tooltip (title) stands in for the label */
   .grid--cards, .grid--2 { grid-template-columns: 1fr; }
   .drawer { width: 100vw; }
   .drawer__body { padding: 18px 16px; }

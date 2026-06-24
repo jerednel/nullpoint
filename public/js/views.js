@@ -97,11 +97,11 @@ function panel(label, count, accent, body) {
 export function dashboard(mount) {
   const c = store.counts();
   const stats = el("div.stats", {}, [
-    statCard(c.inbox, "Inbox", "var(--magenta)"),
-    statCard(c.next, "Next actions", "var(--cyan)"),
-    statCard(c.waiting, "Waiting", "var(--violet)"),
-    statCard(c.projects, "Active projects", "var(--lime)"),
-    statCard(c.doneToday, "Done today", "var(--amber)"),
+    statCard(c.inbox, "Inbox", "var(--magenta)", "⬇"),
+    statCard(c.next, "Next actions", "var(--cyan)", "→"),
+    statCard(c.waiting, "Waiting", "var(--violet)", "⧖"),
+    statCard(c.projects, "Active projects", "var(--lime)", "◇"),
+    statCard(c.doneToday, "Done today", "var(--amber)", "✓"),
   ]);
 
   // One focus block: flagged ∪ scheduled (deduped), so a flagged-and-dated task
@@ -127,9 +127,13 @@ export function dashboard(mount) {
     ]),
   );
 }
-function statCard(num, label, color) {
-  const s = el("div.stat"); s.style.setProperty("--accent", color);
-  s.append(el("div.stat__num", { text: String(num) }), el("div.stat__label", { text: label }));
+function statCard(num, label, color, icon) {
+  const s = el("div.stat", { title: label }); s.style.setProperty("--accent", color);
+  s.append(
+    el("span.stat__icon", { text: icon }),
+    el("div.stat__num", { text: String(num) }),
+    el("div.stat__label", { text: label }),
+  );
   return s;
 }
 function greeting() {
