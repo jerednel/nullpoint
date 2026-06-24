@@ -65,8 +65,11 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  color-scheme: dark;   /* dark-themed native controls (date picker, calendar icon) */
 }
 button, input, textarea, select { font: inherit; color: inherit; }
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
+input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
 button { cursor: pointer; background: none; border: none; }
 a { color: var(--cyan); text-decoration: none; }
 ul { margin: 0; padding: 0; list-style: none; }

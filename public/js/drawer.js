@@ -4,6 +4,7 @@
    ============================================================ */
 import { store } from "./store.js?v=pg1";
 import { el, clear, fmtDate, toast, escapeHtml } from "./dom.js?v=pg1";
+import { mdLine } from "./markdown.js?v=pg1";
 
 const scrim = document.getElementById("drawer-scrim");
 const drawer = document.getElementById("drawer");
@@ -16,6 +17,7 @@ const STATUS = [
 export function closeDrawer() {
   drawer.hidden = true; drawer.setAttribute("aria-hidden", "true");
   scrim.hidden = true; clear(drawer);
+  drawer.classList.remove("drawer--center");                    // reset notes' centered-modal mode
   document.dispatchEvent(new CustomEvent("np:drawer-closed"));   // let sync land any merge deferred behind the drawer
 }
 
@@ -53,15 +55,11 @@ export function openTask(id) {
   const projSel = el("select.select", {}, projectOptions(task.projectId));
   projSel.addEventListener("change", () => store.updateTask(id, { projectId: projSel.value || null }));
 
-  const ctxInput = el("input.input", { value: task.contexts.join(" "), placeholder: "@computer @errands" });
-  ctxInput.addEventListener("change", () => {
-    const ctx = ctxInput.value.split(/\s+/).map((c) => c.trim()).filter(Boolean)
-      .map((c) => (c.startsWith("@") ? c : "@" + c).toLowerCase());
-    store.updateTask(id, { contexts: [...new Set(ctx)] });
-  });
+  const ctxField = contextPicker(id);
 
   const dueInput = el("input.input", { type: "date", value: task.due ? task.due.slice(0, 10) : "" });
   dueInput.addEventListener("change", () => store.updateTask(id, { due: dueInput.value ? new Date(dueInput.value).toISOString() : null }));
+  dueInput.addEventListener("click", () => { try { dueInput.showPicker?.(); } catch {} });   // open the calendar on click
 
   const waitingInput = el("input.input", { value: task.waitingFor || "", placeholder: "who / what are you waiting on?" });
   waitingInput.addEventListener("change", () => store.updateTask(id, { waitingFor: waitingInput.value.trim() }));
@@ -114,7 +112,7 @@ export function openTask(id) {
     el("div.drawer__body", {}, [
       field("Title", titleInput),
       row([field("Status", statusSel), field("Project", projSel)]),
-      row([field("Due", dueInput), field("Contexts", ctxInput)]),
+      row([field("Due", dueInput), field("Contexts", ctxField)]),
       task.status === "waiting" ? field("Waiting on", waitingInput) : "",
       el("div", { style: "border-top:1px solid var(--line);margin:6px 0 18px" }),
       el("div.field__label", { text: "Notes in this task's context", style: "margin-bottom:10px" }),
@@ -133,17 +131,15 @@ export function openTask(id) {
   restoreFocus(_s, titleInput);
 }
 
-/* ---------------- NOTE DRAWER ---------------- */
+/* ---------------- NOTE MODAL (centered, live-markdown) ---------------- */
 export function openNote(id) {
   const note = store.note(id);
   if (!note) return;
   clear(drawer);
+  drawer.classList.add("drawer--center");
 
-  const titleInput = el("input.input", { value: note.title, placeholder: "Note title" });
+  const titleInput = el("input.notemodal__title", { value: note.title, placeholder: "Untitled note" });
   titleInput.addEventListener("change", () => store.updateNote(id, { title: titleInput.value.trim() }));
-
-  const bodyInput = el("textarea.textarea", { value: note.body, style: "min-height:220px" });
-  bodyInput.addEventListener("change", () => store.updateNote(id, { body: bodyInput.value }));
 
   const tagsInput = el("input.input", { value: note.tags.join(" "), placeholder: "#design #docs" });
   tagsInput.addEventListener("change", () => {
@@ -159,12 +155,13 @@ export function openNote(id) {
   drawer.append(
     el("div.drawer__head", {}, [
       el("span.drawer__kicker", { text: "note" }),
+      el("span", { class: "view-sub", style: "margin:0 0 0 auto", text: "click a line to edit · markdown" }),
       el("button.drawer__close", { html: "✕", onClick: closeDrawer }),
     ]),
-    el("div.drawer__body", {}, [
-      field("Title", titleInput),
-      field("Body", bodyInput),
-      row([field("Project", projSel), field("Tags", tagsInput)]),
+    el("div.drawer__body.notemodal", {}, [
+      titleInput,
+      el("div.mded-wrap", {}, [mdEditor(id)]),
+      el("div.notemodal__meta", {}, [field("Project", projSel), field("Tags", tagsInput)]),
       src ? el("div", { class: "note-card__src", html: `↳ captured in task context: <b style="color:var(--ink-dim)">${escapeHtml(src.title)}</b>` }) : "",
     ]),
     el("div.drawer__foot", {}, [
@@ -237,3 +234,97 @@ export function openProject(id) {
 /* helpers */
 function field(label, control) { return el("div.field", {}, [el("label.field__label", { text: label }), control]); }
 function row(fields) { return el("div", { style: "display:grid;grid-template-columns:1fr 1fr;gap:14px" }, fields); }
+
+/* ---------------- contexts: chips + create-or-pick combobox ---------------- */
+function contextPicker(taskId) {
+  const chips = el("div.tagpick__chips");
+  const input = el("input.tagpick__input", { placeholder: "@context…", autocomplete: "off", spellcheck: false });
+  const menu = el("div.tagpick__menu", { hidden: true });
+  const wrap = el("div.tagpick", {}, [chips, el("div.tagpick__box", {}, [input, menu])]);
+  const norm = (c) => (c.startsWith("@") ? c : "@" + c).toLowerCase().replace(/\s+/g, "");
+  const selected = () => store.task(taskId)?.contexts || [];
+
+  function commit(next, keepOpen) {
+    store.updateTask(taskId, { contexts: [...new Set(next.map(norm).filter((c) => c.length > 1))] });
+    drawChips();
+    if (keepOpen) { input.value = ""; input.focus(); renderMenu(); }
+  }
+  function drawChips() {
+    clear(chips);
+    selected().forEach((c) => chips.append(el("span.tag", {}, [
+      el("span", { text: c }),
+      el("button.tag__x", { type: "button", html: "×", title: "Remove " + c, onClick: () => commit(selected().filter((x) => x !== c)) }),
+    ])));
+  }
+  function renderMenu() {
+    clear(menu);
+    const cur = selected(), q = input.value.replace(/^@/, "").toLowerCase().trim();
+    store.allContexts().filter((c) => !cur.includes(c) && c.slice(1).includes(q)).slice(0, 8)
+      .forEach((c) => menu.append(el("div.tagpick__opt", { text: c, onMouseDown: (e) => { e.preventDefault(); commit([...cur, c], true); } })));
+    const fresh = norm(q);
+    if (q && !store.allContexts().includes(fresh) && !cur.includes(fresh))
+      menu.append(el("div.tagpick__opt.is-new", { html: `+ create <b>${escapeHtml(fresh)}</b>`, onMouseDown: (e) => { e.preventDefault(); commit([...cur, q], true); } }));
+    menu.hidden = menu.children.length === 0;
+  }
+  input.addEventListener("focus", renderMenu);
+  input.addEventListener("input", renderMenu);
+  input.addEventListener("blur", () => setTimeout(() => { menu.hidden = true; }, 150));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); const v = input.value.trim(); if (v) commit([...selected(), v], true); }
+    else if (e.key === "Backspace" && !input.value && selected().length) commit(selected().slice(0, -1), true);
+    else if (e.key === "Escape") { if (!menu.hidden) e.stopPropagation(); menu.hidden = true; input.blur(); }
+  });
+  drawChips();
+  return wrap;
+}
+
+/* ---------------- live-preview markdown editor ----------------
+   Every line renders as markdown until you click into it, then that one line
+   becomes raw-editable (Obsidian-style). `switching` suppresses the blur that
+   fires when a redraw removes the active textarea, so programmatic moves
+   (Enter/Backspace/Arrow/click-another-line) don't fight the blur handler. */
+function mdEditor(noteId) {
+  const ed = el("div.mded");
+  let lines = (store.note(noteId)?.body ?? "").split("\n");
+  if (!lines.length) lines = [""];
+  let active = -1, caret = null, switching = false, saveT;
+  const persist = () => { const b = lines.join("\n"); if (b !== store.note(noteId)?.body) store.updateNote(noteId, { body: b }); };
+  const save = () => { clearTimeout(saveT); persist(); };
+  const debSave = () => { clearTimeout(saveT); saveT = setTimeout(persist, 600); };
+  const grow = (ta) => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+
+  function activate(i, pos) { active = i; caret = pos; switching = true; draw(); switching = false; }
+  function deactivate() { if (active < 0) return; active = -1; switching = true; draw(); switching = false; save(); }
+  function draw() {
+    clear(ed);
+    lines.forEach((line, i) => {
+      if (i === active) {
+        const ta = el("textarea.mded__raw", { value: line, rows: 1, spellcheck: false });
+        ta.addEventListener("input", () => { lines[i] = ta.value; grow(ta); debSave(); });
+        ta.addEventListener("blur", () => { if (switching) return; lines[i] = ta.value; active = -1; save(); draw(); });
+        ta.addEventListener("keydown", (e) => key(e, i, ta));
+        ed.append(ta);
+        requestAnimationFrame(() => { grow(ta); ta.focus(); const p = caret == null ? ta.value.length : caret; try { ta.setSelectionRange(p, p); } catch {} caret = null; });
+      } else {
+        const div = el("div.mded__line", { html: mdLine(line) });
+        div.addEventListener("mousedown", (e) => { e.preventDefault(); activate(i, null); });
+        ed.append(div);
+      }
+    });
+  }
+  function key(e, i, ta) {
+    const at0 = ta.selectionStart === 0 && ta.selectionEnd === 0;
+    const atEnd = ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length;
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); const p = ta.selectionStart;
+      lines[i] = ta.value.slice(0, p); lines.splice(i + 1, 0, ta.value.slice(p)); save(); activate(i + 1, 0);
+    } else if (e.key === "Backspace" && at0 && i > 0) {
+      e.preventDefault(); const join = lines[i - 1].length;
+      lines[i] = ta.value; lines[i - 1] += lines[i]; lines.splice(i, 1); save(); activate(i - 1, join);
+    } else if (e.key === "ArrowUp" && at0 && i > 0) { e.preventDefault(); lines[i] = ta.value; activate(i - 1, null); }
+    else if (e.key === "ArrowDown" && atEnd && i < lines.length - 1) { e.preventDefault(); lines[i] = ta.value; activate(i + 1, 0); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); deactivate(); }   // back to preview, don't close the modal
+  }
+  draw();
+  return ed;
+}
