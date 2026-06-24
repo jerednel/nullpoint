@@ -11,8 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/theme.css" />
-  <link rel="stylesheet" href="css/app.css" />
+  <!-- ?v= cache-buster: index.html is served fresh (Cloudflare DYNAMIC) but the
+       CSS is edge-cached for hours. Bump this token whenever css/* changes so
+       returning visitors fetch the new file instead of a stale edge copy.
+       (js/app.js is an ES module whose imports load unversioned, so bumping a
+       token here would not bust the whole chain — purge JS at the edge instead.) -->
+  <link rel="stylesheet" href="css/theme.css?v=20260623-2" />
+  <link rel="stylesheet" href="css/app.css?v=20260623-2" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2306070d'/%3E%3Ctext x='50' y='72' font-size='70' text-anchor='middle' fill='%2300f0ff' font-family='monospace'%3E%E2%97%88%3C/text%3E%3C/svg%3E" />
 </head>
 <body>

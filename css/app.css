@@ -81,7 +81,7 @@
   backdrop-filter: blur(4px);
 }
 .capture {
-  flex: 1; display: flex; align-items: center; gap: 10px;
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
   background: var(--bg-1); border: 1px solid var(--line);
   padding: 0 0 0 14px; max-width: 720px;
   transition: border-color .2s, box-shadow .2s;
@@ -89,7 +89,7 @@
 .capture:focus-within { border-color: var(--cyan); box-shadow: var(--glow-cyan); }
 .capture__prompt { font-family: var(--font-mono); color: var(--cyan); font-size: 14px; }
 .capture__input {
-  flex: 1; background: none; border: none; outline: none;
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
   color: var(--ink); padding: 13px 0; font-family: var(--font-mono); font-size: 14px;
 }
 .capture__input::placeholder { color: var(--ink-faint); }
@@ -291,16 +291,21 @@
 .select { appearance: none; cursor: pointer; }
 
 /* Drawer */
-/* honor the `hidden` attribute — the base .drawer/.drawer-scrim display rules
-   otherwise override the UA [hidden] rule, leaving the empty drawer painted
-   over the whole app (full-screen blank on mobile). JS toggles `.hidden`. */
-.drawer[hidden], .drawer-scrim[hidden] { display: none !important; }
+/* Hidden by DEFAULT. The drawer only paints when its `hidden` attribute is
+   removed (JS open()). Defaulting to display:none — rather than showing by
+   default and relying on an [hidden] override to win a specificity/source-order
+   fight against the UA stylesheet — means a stale cache, partial state, or
+   attribute-timing hiccup can never leave an empty panel painted over the app.
+   This was the root cause of the blank-right-side / blank-mobile bug. */
+.drawer, .drawer-scrim { display: none; }
+.drawer:not([hidden]) { display: flex; }
+.drawer-scrim:not([hidden]) { display: block; }
 .drawer-scrim { position: fixed; inset: 0; z-index: 9500; background: rgba(3,4,8,.6); backdrop-filter: blur(2px); }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 94vw); z-index: 9600;
   background: linear-gradient(160deg, var(--bg-2), var(--bg-1));
   border-left: 1px solid var(--cyan); box-shadow: -10px 0 50px -10px rgba(0,240,255,.25);
-  display: flex; flex-direction: column; animation: drawer-in .28s var(--ease) both;
+  flex-direction: column; animation: drawer-in .28s var(--ease) both;
 }
 .drawer__head { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
 .drawer__kicker { font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: .14em; text-transform: uppercase; }
@@ -378,9 +383,13 @@
 
 /* phones */
 @media (max-width: 560px) {
-  .topbar { flex-wrap: wrap; gap: 8px; }
+  /* keep the hamburger inline with the capture bar on one row — min-width:0
+     on .capture lets it shrink instead of wrapping to its own line */
+  .topbar { flex-wrap: nowrap; gap: 8px; }
   .topbar__meta { display: none; }            /* clock is decorative — reclaim the width */
   .capture { max-width: none; }
+  .capture__prompt { display: none; }         /* reclaim width for the input */
+  .capture__btn { padding-left: 12px; padding-right: 12px; }
   .view { padding: 14px 12px; }
   .view-title { font-size: 23px; }
   .view-head__actions { margin-left: 0; width: 100%; }
