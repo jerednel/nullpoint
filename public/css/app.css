@@ -186,6 +186,12 @@
 }
 .task:hover .task__title { color: #fff; }
 .task.is-done .task__title { color: var(--ink-faint); text-decoration: line-through; }
+/* scheduled-only row in the Focus block: present because of a due date, not a
+   flag. Subtle cyan left edge (the "scheduled" accent) distinguishes it from the
+   flagged rows; the ▣ due chip carries the date. */
+.task--scheduled { box-shadow: inset 3px 0 0 -1px var(--cyan); }
+.task--scheduled .task__title { color: var(--ink-dim); }
+.task--scheduled:hover .task__title { color: var(--ink); }
 .task__meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; align-items: center; }
 .task__actions {
   display: flex; gap: 4px; opacity: 0; transition: opacity .15s;

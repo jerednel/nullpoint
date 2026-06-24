@@ -19,8 +19,8 @@ function reorderable(panelEl) {
 }
 
 /* ---------- shared task row ---------- */
-function taskRow(task, { showProject = true, clarify = false, drag = false } = {}) {
-  const node = el("div.task" + (task.status === "done" ? ".is-done" : ""), { dataset: { id: task.id } });
+function taskRow(task, { showProject = true, clarify = false, drag = false, cue = null } = {}) {
+  const node = el("div.task" + (task.status === "done" ? ".is-done" : "") + (cue === "scheduled" ? ".task--scheduled" : ""), { dataset: { id: task.id } });
 
   const handle = drag ? el("button.drag-handle", { type: "button", html: "⠿", title: "Drag to reorder", "aria-label": "Drag to reorder" }) : null;
 
@@ -104,18 +104,11 @@ export function dashboard(mount) {
     statCard(c.doneToday, "Done today", "var(--amber)"),
   ]);
 
-  const flagged = store.tasks.filter((t) => t.flagged && t.status !== "done").sort(byOrder);
-  const dueSoon = store.tasks
-    .filter((t) => t.due && t.status !== "done")
-    .sort((a, b) => a.due.localeCompare(b.due));
+  // One focus block: flagged ∪ scheduled (deduped), so a flagged-and-dated task
+  // shows once. Scheduled-only rows (a due date but not flagged) get a subtle
+  // cyan edge cue + their ▣ due chip; flagged rows keep their ★.
+  const focus = store.tasks.filter((t) => (t.flagged || t.due) && t.status !== "done").sort(byOrder);
   const blocked = store.tasks.filter((t) => t.status === "waiting").sort(byOrder);
-
-  const cols = el("div.grid.grid--2", {}, [
-    reorderable(panel("⚑ Flagged / focus", flagged.length, "var(--amber)",
-      flagged.length ? flagged.map((t) => taskRow(t, { drag: true })) : [empty("◇", "Nothing flagged", "Flag a task to spotlight it here")])),
-    panel("▣ Scheduled", dueSoon.length, "var(--cyan)",
-      dueSoon.length ? dueSoon.map((t) => taskRow(t)) : [empty("▤", "No dates set", "Add a due date from any task")]),
-  ]);
 
   mount.append(
     head("DASHBOARD", "▚", `${greeting()} — ${c.inbox} to clarify, ${c.next} ready to engage.`),
@@ -123,7 +116,10 @@ export function dashboard(mount) {
     c.inbox ? el("div", { style: "margin-bottom:22px" }, [
       panel("⬇ Process your inbox", c.inbox, "var(--magenta)", store.tasks.filter((t) => t.status === "inbox").slice(0, 4).map((t) => taskRow(t, { clarify: true })))
     ]) : "",
-    cols,
+    reorderable(panel("⚑ Focus  ·  flagged + scheduled", focus.length, "var(--amber)",
+      focus.length
+        ? focus.map((t) => taskRow(t, { drag: true, cue: !t.flagged && t.due ? "scheduled" : null }))
+        : [empty("◇", "Nothing flagged or scheduled", "Flag a task or give it a due date to spotlight it here")])),
     el("div", { style: "margin-top:22px" }, [
       reorderable(panel("⧖ Waiting / blocked", blocked.length, "var(--violet)",
         blocked.length ? blocked.map((t) => taskRow(t, { drag: true }))
