@@ -145,5 +145,12 @@ sysReadout();
 const toggle = el("button.menu-toggle", { html: "☰", onClick: () => document.querySelector(".sidebar").classList.toggle("is-open") });
 document.querySelector(".topbar").prepend(toggle);
 document.querySelector(".sidebar").addEventListener("click", (e) => { if (e.target.closest(".nav__item")) document.querySelector(".sidebar").classList.remove("is-open"); });
+// tap the backdrop (or anywhere outside the panel) to close the mobile nav drawer
+document.addEventListener("click", (e) => {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar.classList.contains("is-open")) return;
+  if (e.target.closest(".menu-toggle")) return;        // the toggle manages itself
+  if (e.target === sidebar || !sidebar.contains(e.target)) sidebar.classList.remove("is-open");
+});
 
 console.log("%c◈ NULLPOINT online", "color:#00f0ff;font-family:monospace;font-size:14px");

@@ -346,16 +346,52 @@
 /* clarify quick-bar shown on inbox tasks */
 .clarify { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 
-/* responsive */
-@media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { position: fixed; z-index: 9700; left: 0; top: 0; bottom: 0; width: 248px; transform: translateX(-100%); transition: transform .25s var(--ease); }
-  .sidebar.is-open { transform: none; }
-  .topbar { padding: 12px 14px; }
-  .view { padding: 16px; }
-  .menu-toggle { display: grid !important; }
-}
+/* ─────────────── RESPONSIVE ─────────────── */
 .menu-toggle {
   display: none; width: 42px; height: 42px; place-items: center; font-size: 18px;
   border: 1px solid var(--line); color: var(--cyan); background: var(--bg-1);
+  flex-shrink: 0;
+}
+
+/* tablet / collapsed sidebar */
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; z-index: 9700; left: 0; top: 0; bottom: 0; width: min(248px, 82vw);
+    transform: translateX(-100%); transition: transform .25s var(--ease);
+    box-shadow: 18px 0 44px -14px rgba(0,0,0,.7);
+  }
+  .sidebar.is-open { transform: none; }
+  /* dim backdrop behind the open nav drawer (tap to close, handled in app.js) */
+  .sidebar.is-open::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: rgba(3,4,8,.58); backdrop-filter: blur(2px);
+  }
+  .topbar { padding: 12px 14px; gap: 10px; }
+  .view { padding: 16px; }
+  .menu-toggle { display: grid !important; }
+}
+
+/* phones */
+@media (max-width: 560px) {
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .topbar__meta { display: none; }            /* clock is decorative — reclaim the width */
+  .capture { max-width: none; }
+  .view { padding: 14px 12px; }
+  .view-title { font-size: 23px; }
+  .view-head__actions { margin-left: 0; width: 100%; }
+  .stat__num { font-size: 30px; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+  .grid--cards, .grid--2 { grid-template-columns: 1fr; }
+  .drawer { width: 100vw; }
+  .drawer__body { padding: 18px 16px; }
+}
+
+/* touch devices: no hover, so reveal hover-only affordances and grow tap targets */
+@media (hover: none), (pointer: coarse) {
+  .task__actions { opacity: 1; }
+  .icon-btn { width: 38px; height: 38px; font-size: 15px; }
+  .drawer__close { width: 40px; height: 40px; }
+  /* 16px keeps iOS Safari from auto-zooming on focus */
+  .capture__input, .input, .textarea, .select { font-size: 16px; }
 }
