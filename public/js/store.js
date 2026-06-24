@@ -66,17 +66,100 @@ function load() {
   }
 }
 
+const ENTITIES = [["tasks", "tasks"], ["projects", "projects"], ["notes", "notes"]];
+const VOLATILE = new Set(["rev", "updatedAt", "deletedAt"]);
+const clone = (x) => (typeof structuredClone === "function" ? structuredClone(x) : JSON.parse(JSON.stringify(x)));
+function meaningful(e) {
+  // JSON of an entity ignoring volatile fields, key-order-independent, so two
+  // equal-by-content entities compare equal regardless of property order.
+  const o = {};
+  for (const k of Object.keys(e).filter((k) => !VOLATILE.has(k)).sort()) o[k] = e[k];
+  return JSON.stringify(o);
+}
+
 class Store {
   constructor() {
     this.state = load();
+    for (const [k] of ENTITIES) for (const e of this.state[k]) if (e.rev == null) e.rev = 1;
     this.subs = new Set();
+    this._sink = null;          // sync layer registers an op consumer here
+    this._muteCapture = false;  // true while applying authoritative server rows
+    this._shadow = this._shadowOf(this.state);
   }
+  _shadowOf(state) {
+    const s = {};
+    for (const [k] of ENTITIES) { s[k] = new Map(); for (const e of state[k]) s[k].set(e.id, clone(e)); }
+    return s;
+  }
+  setSyncSink(fn) { this._sink = fn; }
   subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
   _persist() {
     try { localStorage.setItem(KEY, JSON.stringify(this.state)); }
     catch (e) { console.warn("persist failed", e); }
   }
-  _emit() { this._persist(); this.subs.forEach((fn) => fn(this.state)); }
+  /* THE op-capture point. Diff state vs shadow → full-row upsert for every
+     changed entity, tombstone for every vanished id. Because this is the only
+     capture point, cascade side-effects (deleteTask nulls note.taskId,
+     deleteProject detaches tasks+notes, addNote/updateNote rewrite noteIds) and
+     wholesale replaces (import/reset/loadDemo) are all captured automatically,
+     each as a FULL snapshot (never a patch), with rev + updatedAt stamped here
+     so siblings advance too. */
+  _captureChanges() {
+    if (this._muteCapture || !this._sink) return;
+    const ops = [], t = now();
+    for (const [k, entity] of ENTITIES) {
+      const shadow = this._shadow[k], seen = new Set();
+      for (const e of this.state[k]) {
+        seen.add(e.id);
+        const prev = shadow.get(e.id);
+        if (prev && meaningful(prev) === meaningful(e)) continue;
+        e.rev = prev ? (prev.rev || 1) + 1 : (e.rev || 1);
+        e.updatedAt = t;
+        ops.push({ entity, id: e.id, rev: e.rev, updatedAt: t, deletedAt: null, data: clone(e) });
+      }
+      for (const [id, prev] of shadow) {
+        if (seen.has(id)) continue;
+        const rev = (prev.rev || 1) + 1;
+        ops.push({ entity, id, rev, updatedAt: t, deletedAt: t, data: { ...clone(prev), rev, updatedAt: t, deletedAt: t } });
+      }
+    }
+    if (ops.length) this._sink(ops);
+    this._shadow = this._shadowOf(this.state);
+  }
+  _emit() { this._captureChanges(); this._persist(); this.subs.forEach((fn) => fn(this.state)); }
+
+  /* ---- sync integration ---- */
+  hasData() { return this.state.tasks.length + this.state.projects.length + this.state.notes.length > 0; }
+  snapshotOps() {              // all rows as upserts — used for first-run push when server is empty
+    const ops = [];
+    for (const [k, entity] of ENTITIES)
+      for (const e of this.state[k]) { if (e.rev == null) e.rev = 1; ops.push({ entity, id: e.id, rev: e.rev, updatedAt: e.updatedAt, deletedAt: null, data: clone(e) }); }
+    return ops;
+  }
+  applyRemote(rows) {          // merge authoritative rows by LWW, no echo back to the queue
+    this._muteCapture = true;
+    let changed = false;
+    for (const [k] of ENTITIES) {
+      for (const r of (rows[k] || [])) {
+        const arr = this.state[k], i = arr.findIndex((x) => x.id === r.id), local = i >= 0 ? arr[i] : null;
+        if (local && !(r.rev > local.rev || (r.rev === local.rev && (r.updatedAt || "") > (local.updatedAt || "")))) continue;
+        if (r.deletedAt) { if (i >= 0) { arr.splice(i, 1); changed = true; } }
+        else { const e = clone(r); delete e.deletedAt; if (i >= 0) arr[i] = e; else arr.unshift(e); changed = true; }
+      }
+    }
+    this._shadow = this._shadowOf(this.state);
+    this._muteCapture = false;
+    if (changed) { this._persist(); this.subs.forEach((fn) => fn(this.state)); }
+    return changed;
+  }
+  replaceAll(rows) {           // replace local with server snapshot (first-load reconcile, after local is flushed)
+    this._muteCapture = true;
+    for (const [k] of ENTITIES) this.state[k] = (rows[k] || []).map(clone);
+    this._shadow = this._shadowOf(this.state);
+    this._muteCapture = false;
+    this._persist();
+    this.subs.forEach((fn) => fn(this.state));
+  }
 
   /* getters */
   get tasks() { return this.state.tasks; }

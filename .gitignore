@@ -1,6 +1,10 @@
 node_modules/
-package.json
-package-lock.json
-_smoke*.mjs
+
+# Secrets — NEVER commit. (This file previously ignored package.json but not .env,
+# which would have published the bearer secret on first commit.)
+.env
+.env.*
+!.env.example
+
 .DS_Store
 *.log

@@ -14,8 +14,10 @@ Capture everything. Clarify ruthlessly. Engage.
 ## What it is
 
 NULLPOINT is a complete, single-page [GTD](https://gettingthingsdone.com/) app
-with a neon-noir interface. No build step, no backend, no tracking — your data
-lives in your own browser (`localStorage`) and never leaves it.
+with a neon-noir interface. The UI is dependency-free vanilla JS; persistence is
+**optimistic local-first** — every action applies instantly in the browser and
+syncs to a local **Postgres** database in the background, so the network is never
+in your way and the app keeps working offline.
 
 It implements the full GTD workflow:
 
@@ -60,19 +62,43 @@ Cyberpunk, but **legibility first** — neon is an accent, never the body copy.
 | `@word` in capture | adds a context (and routes straight to Next Actions) |
 | `!` in capture | flags the item |
 
+## Sync & storage
+
+One [Bun](https://bun.sh) server (`server/`) serves the static app **and** a small
+sync API on the same origin, backed by local Postgres.
+
+- **Optimistic, local-first.** Mutations apply to in-memory state and re-render
+  instantly; `localStorage` is an offline cache. A durable, debounced, batched
+  queue flushes to the server in the background — the UI never awaits the network.
+- **No data loss.** Ops are full-row snapshots captured by diffing state, carry a
+  per-row `rev`, and are applied idempotently with last-write-wins; a lost ack is a
+  harmless replay. Unsynced changes survive reloads and offline stretches.
+- **Locked.** The app is gated by a passphrase (bearer token); the API is
+  timing-safe-authenticated, rate-limited, and same-origin only. **⊘ lock** clears
+  the session on shared devices.
+- **⇩ export / ⇧ import** still write and restore JSON backups.
+
 ## Run it
 
-It's static. Open `index.html` via any web server:
+Needs [Bun](https://bun.sh) and a local Postgres.
 
 ```bash
-python3 -m http.server
-# then visit http://localhost:8000
+createdb nullpoint
+bun install
+cp .env.example .env          # then set SYNC_SECRET to your passphrase
+bun start                     # serves app + API on http://localhost:8000
 ```
 
-(ES modules require `http://`, not `file://`.) Deploys as-is to GitHub Pages.
+Keep it running across reboots with the included LaunchAgent:
 
-Your data: **⇩ export** writes a JSON backup; **⇧ import** restores one.
+```bash
+cp server/com.nullpoint.server.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/com.nullpoint.server.plist
+```
+
+Schema is created/migrated automatically on boot. See [`server/DESIGN.md`](server/DESIGN.md)
+for the sync architecture.
 
 ---
 
-<div align="center"><sub>Built as a personal GTD command center. No accounts, no servers, no surveillance.</sub></div>
+<div align="center"><sub>Built as a personal GTD command center. Your data, your machine, your passphrase.</sub></div>

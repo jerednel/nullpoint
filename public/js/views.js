@@ -3,7 +3,7 @@
    Each export renders into the #view container.
    ============================================================ */
 import { store } from "./store.js";
-import { el, clear, fmtDate, isOverdue, toast } from "./dom.js";
+import { el, clear, fmtDate, isOverdue, toast, escapeHtml } from "./dom.js";
 import { openTask, openNote, openProject } from "./drawer.js";
 
 /* ---------- shared task row ---------- */
@@ -246,7 +246,7 @@ export function notes(mount) {
     if (proj) meta.append(el("span.chip.chip--proj", { text: "◇ " + proj.title }));
     n.tags.forEach((t) => meta.append(el("span.chip.chip--tag", { text: "#" + t })));
     if (meta.children.length) c.append(meta);
-    if (src) c.append(el("div.note-card__src", { html: `↳ from task: ${src.title}` }));
+    if (src) c.append(el("div.note-card__src", { html: `↳ from task: ${escapeHtml(src.title)}` }));
     return c;
   };
 

@@ -3,7 +3,7 @@
    Edit a task (with its in-context notes) or edit a note.
    ============================================================ */
 import { store } from "./store.js";
-import { el, clear, fmtDate, toast } from "./dom.js";
+import { el, clear, fmtDate, toast, escapeHtml } from "./dom.js";
 
 const scrim = document.getElementById("drawer-scrim");
 const drawer = document.getElementById("drawer");
@@ -16,6 +16,16 @@ const STATUS = [
 export function closeDrawer() {
   drawer.hidden = true; drawer.setAttribute("aria-hidden", "true");
   scrim.hidden = true; clear(drawer);
+  document.dispatchEvent(new CustomEvent("np:drawer-closed"));   // let sync land any merge deferred behind the drawer
+}
+
+/* On in-place refresh (drawer already open — e.g. after a flag toggle or adding
+   an action), keep the body scroll position and DON'T steal the caret back to
+   the title. Only focus the title on a fresh open. */
+function reopenScroll() { return { wasOpen: !drawer.hidden, top: drawer.querySelector(".drawer__body")?.scrollTop || 0 }; }
+function restoreFocus(s, titleInput) {
+  if (s.wasOpen) { const b = drawer.querySelector(".drawer__body"); if (b) b.scrollTop = s.top; }
+  else titleInput.focus();
 }
 scrim.addEventListener("click", closeDrawer);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawer.hidden) closeDrawer(); });
@@ -31,6 +41,7 @@ function projectOptions(selected) {
 export function openTask(id) {
   const task = store.task(id);
   if (!task) return;
+  const _s = reopenScroll();
   clear(drawer);
 
   const titleInput = el("textarea.textarea", { value: task.title, rows: 2, style: "min-height:auto;font-family:var(--font-display);font-size:17px" });
@@ -119,7 +130,7 @@ export function openTask(id) {
     ]),
   );
   open();
-  titleInput.focus();
+  restoreFocus(_s, titleInput);
 }
 
 /* ---------------- NOTE DRAWER ---------------- */
@@ -154,7 +165,7 @@ export function openNote(id) {
       field("Title", titleInput),
       field("Body", bodyInput),
       row([field("Project", projSel), field("Tags", tagsInput)]),
-      src ? el("div", { class: "note-card__src", html: `↳ captured in task context: <b style="color:var(--ink-dim)">${src.title}</b>` }) : "",
+      src ? el("div", { class: "note-card__src", html: `↳ captured in task context: <b style="color:var(--ink-dim)">${escapeHtml(src.title)}</b>` }) : "",
     ]),
     el("div.drawer__foot", {}, [
       el("span", { class: "view-sub", style: "flex:1", text: "updated " + fmtDate(note.updatedAt) }),
@@ -168,6 +179,7 @@ export function openNote(id) {
 export function openProject(id) {
   const p = store.project(id);
   if (!p) return;
+  const _s = reopenScroll();
   clear(drawer);
 
   const titleInput = el("input.input", { value: p.title, placeholder: "Project name", style: "font-family:var(--font-display);font-size:17px" });
@@ -219,7 +231,7 @@ export function openProject(id) {
     ]),
   );
   open();
-  titleInput.focus();
+  restoreFocus(_s, titleInput);
 }
 
 /* helpers */

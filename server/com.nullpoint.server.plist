@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- LaunchAgent that keeps the NULLPOINT server running (restart on crash + at
+     login). Install:
+       cp server/com.nullpoint.server.plist ~/Library/LaunchAgents/
+       launchctl load -w ~/Library/LaunchAgents/com.nullpoint.server.plist
+     Stop:  launchctl unload -w ~/Library/LaunchAgents/com.nullpoint.server.plist
+     Bun auto-loads .env from WorkingDirectory (SYNC_SECRET, PORT, DATABASE_URL). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nullpoint.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/bun</string>
+    <string>server/index.ts</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/jeremy/git/nullpoint</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/jeremy/git/nullpoint/server.log</string>
+  <key>StandardErrorPath</key><string>/Users/jeremy/git/nullpoint/server.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>

@@ -6,6 +6,8 @@ import { store } from "./store.js";
 import { el, clear, toast, parseCapture } from "./dom.js";
 import { closeDrawer } from "./drawer.js";
 import * as views from "./views.js";
+import { sync } from "./sync.js";
+import { showUnlock } from "./auth.js";
 
 /* ---- route table ---- */
 const ROUTES = [
@@ -43,6 +45,7 @@ function paint(animate) {
 /* full navigation: animate + close any open drawer + scroll to top */
 function renderView() {
   closeDrawer();
+  sync.drawerClosed();          // let any merge deferred behind the drawer land now
   paint(true);
   viewMount.scrollTop = 0;
 }
@@ -129,17 +132,47 @@ function tick() {
 }
 tick(); setInterval(tick, 1000);
 
+/* ---- sync status readout (replaces the old hardcoded "online") ---- */
+let syncPhase = "idle", syncQueued = 0;
+const SYNC_LABEL = {
+  idle:    "<b>synced</b>",
+  pulling: "<b>synced</b>",
+  dirty:   "saving…",
+  pushing: "saving…",
+  backoff: () => `<b style="color:var(--amber)">offline</b> · ${syncQueued} queued`,
+  authwait:"<b style=\"color:var(--red)\">locked</b>",
+  error:   "<b style=\"color:var(--red)\">sync error</b>",
+};
+let lastReadout = "";
 function sysReadout() {
-  const c = store.counts();
-  document.getElementById("sys-readout").innerHTML =
-    `sys: <b>online</b> · ${store.tasks.length} tasks · ${store.notes.length} notes`;
+  const v = SYNC_LABEL[syncPhase] || "<b>synced</b>";
+  const html = `sync: ${typeof v === "function" ? v() : v} · ${store.tasks.length} tasks · ${store.notes.length} notes`;
+  if (html === lastReadout) return;          // skip identical rewrites (idle/pulling render the same)
+  lastReadout = html;
+  document.getElementById("sys-readout").innerHTML = html;
+}
+function onSyncStatus(s) { syncPhase = s.phase; syncQueued = s.queued; sysReadout(); }
+
+/* ---- auth gate ---- */
+const appEl = document.getElementById("app");
+function lockUI() {
+  appEl.style.visibility = "hidden";
+  clear(viewMount); clear(navMount);              // don't leave board data in the DOM while locked
+  showUnlock(async (token) => {
+    appEl.style.visibility = "";
+    await sync.unlock(token);
+    renderView(); sysReadout();
+  });
 }
 
 /* ---- wire it up ---- */
 store.subscribe(() => { refreshView(); sysReadout(); });
 window.addEventListener("hashchange", renderView);
-renderView();
-sysReadout();
+if (sync.hasToken()) { renderView(); sysReadout(); }   // trusted device → show cached board instantly
+else appEl.style.visibility = "hidden";
+sync.init({ onStatus: onSyncStatus, onAuthRequired: lockUI });
+
+document.getElementById("lock-btn").addEventListener("click", () => { sync.lock(); lockUI(); });
 
 // mobile menu toggle (injected; only visible < 860px via CSS)
 const toggle = el("button.menu-toggle", { html: "☰", onClick: () => document.querySelector(".sidebar").classList.toggle("is-open") });
