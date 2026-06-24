@@ -291,6 +291,10 @@
 .select { appearance: none; cursor: pointer; }
 
 /* Drawer */
+/* honor the `hidden` attribute — the base .drawer/.drawer-scrim display rules
+   otherwise override the UA [hidden] rule, leaving the empty drawer painted
+   over the whole app (full-screen blank on mobile). JS toggles `.hidden`. */
+.drawer[hidden], .drawer-scrim[hidden] { display: none !important; }
 .drawer-scrim { position: fixed; inset: 0; z-index: 9500; background: rgba(3,4,8,.6); backdrop-filter: blur(2px); }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 94vw); z-index: 9600;
