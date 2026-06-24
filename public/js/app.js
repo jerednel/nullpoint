@@ -2,12 +2,12 @@
    NULLPOINT // APP BOOTSTRAP
    Router, nav, global capture, keyboard, IO.
    ============================================================ */
-import { store } from "./store.js";
-import { el, clear, toast, parseCapture } from "./dom.js";
-import { closeDrawer } from "./drawer.js";
-import * as views from "./views.js";
-import { sync } from "./sync.js";
-import { showUnlock } from "./auth.js";
+import { store } from "./store.js?v=pg1";
+import { el, clear, toast, parseCapture } from "./dom.js?v=pg1";
+import { closeDrawer } from "./drawer.js?v=pg1";
+import * as views from "./views.js?v=pg1";
+import { sync } from "./sync.js?v=pg1";
+import { showUnlock } from "./auth.js?v=pg1";
 
 /* ---- route table ---- */
 const ROUTES = [

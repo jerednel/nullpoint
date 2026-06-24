@@ -2,8 +2,8 @@
    NULLPOINT // DETAIL DRAWER
    Edit a task (with its in-context notes) or edit a note.
    ============================================================ */
-import { store } from "./store.js";
-import { el, clear, fmtDate, toast, escapeHtml } from "./dom.js";
+import { store } from "./store.js?v=pg1";
+import { el, clear, fmtDate, toast, escapeHtml } from "./dom.js?v=pg1";
 
 const scrim = document.getElementById("drawer-scrim");
 const drawer = document.getElementById("drawer");

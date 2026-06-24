@@ -10,8 +10,8 @@
      idle · dirty(debounce) · pushing · backoff · pulling · authwait
    Push and pull are mutually exclusive; a pull never runs while ops are queued.
    ============================================================ */
-import { store } from "./store.js";
-import { isDragging } from "./sortable.js";
+import { store } from "./store.js?v=pg1";
+import { isDragging } from "./sortable.js?v=pg1";
 
 const API = "/api";
 const K = { token: "nullpoint.sync.token", queue: "nullpoint.sync.queue.v1", cursor: "nullpoint.sync.cursor", adopted: "nullpoint.sync.adopted" };

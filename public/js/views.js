@@ -2,10 +2,10 @@
    NULLPOINT // VIEWS
    Each export renders into the #view container.
    ============================================================ */
-import { store, orderKey } from "./store.js";
-import { el, clear, fmtDate, isOverdue, toast, escapeHtml } from "./dom.js";
-import { openTask, openNote, openProject } from "./drawer.js";
-import { sortableList } from "./sortable.js";
+import { store, orderKey } from "./store.js?v=pg1";
+import { el, clear, fmtDate, isOverdue, toast, escapeHtml } from "./dom.js?v=pg1";
+import { openTask, openNote, openProject } from "./drawer.js?v=pg1";
+import { sortableList } from "./sortable.js?v=pg1";
 
 const byOrder = (a, b) => orderKey(a) - orderKey(b);
 /* attach drag-reorder to a freshly-built panel's body */

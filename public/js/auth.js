@@ -3,8 +3,8 @@
    Full-screen overlay shown when there is no valid token. Nothing of the GTD
    board is rendered behind it until the passphrase validates against the server.
    ============================================================ */
-import { el } from "./dom.js";
-import { sync } from "./sync.js";
+import { el } from "./dom.js?v=pg1";
+import { sync } from "./sync.js?v=pg1";
 
 let overlay = null;
 
