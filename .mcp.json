@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nullpoint": {
+      "command": "bun",
+      "args": ["/Users/jeremy/git/nullpoint/server/mcp.ts"]
+    }
+  }
+}

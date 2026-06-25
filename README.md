@@ -99,6 +99,25 @@ launchctl load -w ~/Library/LaunchAgents/com.nullpoint.server.plist
 Schema is created/migrated automatically on boot. See [`server/DESIGN.md`](server/DESIGN.md)
 for the sync architecture.
 
+## Agent access (MCP)
+
+An [MCP](https://modelcontextprotocol.io) server (`server/mcp.ts`, stdio) lets an LLM agent
+read and CRUD the board. It writes through the same sync path the web app uses, so agent
+changes appear in the UI on its next pull. Register it with your MCP client:
+
+```jsonc
+// .mcp.json (Claude Code) or your agent's MCP config
+{ "mcpServers": { "nullpoint": {
+    "command": "bun", "args": ["/Users/jeremy/git/nullpoint/server/mcp.ts"] } } }
+```
+
+15 tools, deliberately scoped so an agent never has to guess which to use: `list_tasks` /
+`list_projects` / `list_notes` / `get_project` / `get_summary` for reading, and symmetric
+`create_*` / `update_*` / `delete_*` per entity plus `complete_tasks` (batch). Status moves
+(including completion) go through `update_task`; deletes are soft/reversible and the
+descriptions steer toward status changes over deletion. The tool surface was hardened with an
+adversarial agent-usability review (boundaries, descriptions, schemas, coverage, safety).
+
 ---
 
 <div align="center"><sub>Built as a personal GTD command center. Your data, your machine, your passphrase.</sub></div>
