@@ -6,6 +6,7 @@ import { store, orderKey } from "./store.js?v=pg1";
 import { el, clear, fmtDate, isOverdue, toast, escapeHtml } from "./dom.js?v=pg1";
 import { openTask, openNote, openProject } from "./drawer.js?v=pg1";
 import { sortableList } from "./sortable.js?v=pg1";
+import { startReview } from "./tour.js?v=pg1";
 
 const byOrder = (a, b) => orderKey(a) - orderKey(b);
 /* attach drag-reorder to a freshly-built panel's body */
@@ -204,7 +205,7 @@ export function projects(mount) {
   const addBtn = el("button.btn.btn--primary", { html: "+ new project", onClick: () => { const p = store.addProject(); openProject(p.id); } });
 
   const card = (p) => {
-    const tasks = store.projectTasks(p);
+    const tasks = store.projectTasks(p.id);
     const open = tasks.filter((t) => t.status !== "done");
     const done = tasks.length - open.length;
     const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
@@ -283,7 +284,7 @@ export function notes(mount) {
 export function review(mount) {
   const c = store.counts();
   const staleInbox = c.inbox > 0;
-  const noNext = store.projects.filter((p) => p.status === "active" && !store.projectTasks(p).some((t) => t.status === "next"));
+  const noNext = store.projects.filter((p) => p.status === "active" && !store.projectTasks(p.id).some((t) => t.status === "next"));
   const steps = [
     ["⬇", "Empty your inbox", `${c.inbox} item(s) waiting to be clarified`, staleInbox],
     ["→", "Review next actions", `${c.next} action(s) — are they still the true next step?`, false],
@@ -292,7 +293,8 @@ export function review(mount) {
     ["✶", "Review someday/maybe", `${c.someday} item(s) — anything ready to activate?`, false],
   ];
   mount.append(
-    head("WEEKLY REVIEW", "↻", "The keystone habit. Run this loop to get clear, current, and creative. Trust the system again."),
+    head("WEEKLY REVIEW", "↻", "The keystone habit. Run this loop to get clear, current, and creative. Trust the system again.",
+      [el("button.btn.btn--primary", { html: "▶ Run Weekly Review", onClick: startReview })]),
     el("div.panel", {}, [el("div.panel__body", {}, steps.map(([icon, title, sub, alert]) =>
       el("div.task", {}, [
         el("div.task__check", { html: alert ? "!" : "✓", style: alert ? "border-color:var(--amber);color:var(--amber)" : "border-color:var(--lime);color:var(--lime)" }),

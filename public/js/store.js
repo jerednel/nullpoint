@@ -254,7 +254,7 @@ class Store {
     this.state.notes.forEach((n) => { if (n.projectId === id) n.projectId = null; });
     this._emit();
   }
-  projectTasks(id) { return this.state.tasks.filter((t) => t.projectId === id); }
+  projectTasks(p) { const id = typeof p === "string" ? p : p && p.id; return this.state.tasks.filter((t) => t.projectId === id); }
 
   /* ---------- NOTES ---------- */
   addNote(fields = {}) {

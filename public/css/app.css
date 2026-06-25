@@ -544,3 +544,32 @@
   .notemodal { padding: 16px; }
   .notemodal__meta { grid-template-columns: 1fr; }
 }
+
+/* ─────────────── WEEKLY REVIEW TOUR BAR ─────────────── */
+.reviewbar {
+  position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 18px; z-index: 9400;
+  width: min(680px, calc(100vw - 24px)); display: flex; align-items: center; gap: 16px;
+  padding: 14px 18px; background: linear-gradient(160deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--cyan); box-shadow: 0 0 0 1px rgba(0,240,255,.12), 0 26px 64px -18px rgba(0,0,0,.85);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  animation: toast-in .28s var(--ease) both;
+}
+.reviewbar__close { position: absolute; top: 7px; right: 10px; color: var(--ink-faint); font-size: 13px; line-height: 1; }
+.reviewbar__close:hover { color: var(--red); }
+.reviewbar__body { flex: 1; min-width: 0; }
+.reviewbar__dots { display: flex; gap: 6px; margin-bottom: 7px; }
+.reviewbar__dot { width: 7px; height: 7px; border: 1px solid var(--line-bright); border-radius: 50%; }
+.reviewbar__dot.is-done { background: var(--line-bright); }
+.reviewbar__dot.is-on { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.reviewbar__title { font-family: var(--font-display); font-weight: 600; font-size: 14.5px; color: var(--ink); display: flex; align-items: center; gap: 9px; letter-spacing: .02em; }
+.reviewbar__icon { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
+.reviewbar__guide { font-size: 12.5px; color: var(--ink-dim); margin-top: 4px; line-height: 1.45; }
+.reviewbar__status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 6px; letter-spacing: .03em; }
+.reviewbar__nav { display: flex; gap: 8px; flex-shrink: 0; }
+.btn[disabled] { opacity: .35; pointer-events: none; }
+
+@media (max-width: 560px) {
+  .reviewbar { width: calc(100vw - 12px); bottom: 8px; padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
+  .reviewbar__nav { width: 100%; }
+  .reviewbar__nav .btn { flex: 1; }
+}
