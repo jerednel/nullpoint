@@ -108,7 +108,10 @@ export function dashboard(mount) {
   // One focus block: flagged ∪ scheduled (deduped), so a flagged-and-dated task
   // shows once. Scheduled-only rows (a due date but not flagged) get a subtle
   // cyan edge cue + their ▣ due chip; flagged rows keep their ★.
-  const focus = store.tasks.filter((t) => (t.flagged || t.due) && t.status !== "done").sort(byOrder);
+  // Exclude waiting/blocked so they don't appear in focus/flagged/scheduled.
+  const focus = store.tasks
+    .filter((t) => (t.flagged || t.due) && t.status !== "done" && t.status !== "waiting")
+    .sort(byOrder);
   const blocked = store.tasks.filter((t) => t.status === "waiting").sort(byOrder);
 
   mount.append(
