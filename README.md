@@ -2,7 +2,7 @@
 
 # ◈ NULLPOINT
 
-**A cyberpunk Getting-Things-Done system.**
+**A cyberpunk Getting-Things-Done system.**  
 Capture everything. Clarify ruthlessly. Engage.
 
 `get_things_done.exe` — dark, glitchy, and legible.
@@ -78,22 +78,49 @@ sync API on the same origin, backed by local Postgres.
   the session on shared devices.
 - **⇩ export / ⇧ import** still write and restore JSON backups.
 
-## Run it
+## Prerequisites
 
-Needs [Bun](https://bun.sh) and a local Postgres.
+- [Bun](https://bun.sh) (fast JavaScript runtime)
+- PostgreSQL (local or any reachable instance)
 
+Install them once:
+
+**macOS (Homebrew)**
 ```bash
-createdb nullpoint
-bun install
-cp .env.example .env          # then set SYNC_SECRET to your passphrase
-bun start                     # serves app + API on http://localhost:8000
+brew install bun postgresql
+brew services start postgresql
 ```
 
-Keep it running across reboots with the included LaunchAgent:
+**Other platforms** → follow the official Bun and Postgres installers.
+
+## Quick start
+
+```bash
+git clone https://github.com/yourname/nullpoint.git
+cd nullpoint
+
+createdb nullpoint          # create the database (or use an existing one)
+bun install
+cp .env.example .env        # edit .env and set a strong SYNC_SECRET
+bun start                   # opens at http://localhost:8000
+```
+
+The first run automatically creates the tables.  
+Point your browser at `http://localhost:8000`, enter the passphrase you put in `SYNC_SECRET`, and you’re in.
+
+## Keep it running (macOS)
+
+Copy the included LaunchAgent so the server starts on login:
 
 ```bash
 cp server/com.nullpoint.server.plist ~/Library/LaunchAgents/
 launchctl load -w ~/Library/LaunchAgents/com.nullpoint.server.plist
+```
+
+To stop it later:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.nullpoint.server.plist
 ```
 
 Schema is created/migrated automatically on boot. See [`server/DESIGN.md`](server/DESIGN.md)
